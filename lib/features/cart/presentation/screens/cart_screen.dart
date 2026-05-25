@@ -99,19 +99,18 @@ class CartScreen extends StatelessWidget {
                               children: [
 
                                 IconButton(
-                                  onPressed: () {
-  cart.increaseQty(item);
-},
-                                
-                                  icon: const Icon(Icons.add),
-                                ),
+  onPressed: () {
+    cart.increaseQty(item);
+  },
+  icon: const Icon(Icons.add),
+),
 
-                                IconButton(
-                                  onPressed: () {
-  cart.decreaseQty(item);
-},
-                                  icon: const Icon(Icons.remove),
-                                ),
+IconButton(
+  onPressed: () {
+    cart.decreaseQty(item);
+  },
+  icon: const Icon(Icons.remove),
+),
                               ],
                             ),
                           ],

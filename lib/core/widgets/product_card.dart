@@ -1,15 +1,22 @@
+import 'package:ecommerce_ai/features/product/data/models/product_model.dart';
+import 'package:ecommerce_ai/features/wishlist/controller/wishlist_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ProductCard extends StatelessWidget {
+  final ProductModel product;
   final String title;
   final String price;
+  final String image;
   final VoidCallback onTap;
   final VoidCallback onAdd;
 
   const ProductCard({
     super.key,
+    required this.product,
     required this.title,
     required this.price,
+    required this.image,
     required this.onTap,
     required this.onAdd,
   });
@@ -33,35 +40,88 @@ class ProductCard extends StatelessWidget {
 
             children: [
 
+              // IMAGE + WISHLIST ICON
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black12,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                child: Stack(
+                  children: [
 
-                  child: const Center(
-                    child: Icon(
-                      Icons.shopping_bag,
-                      size: 60,
-                      color: Color(0xFF6C63FF),
+                    // PRODUCT IMAGE
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+
+                        child: Image.network(
+                          image,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        ),
+                      ),
                     ),
-                  ),
+
+                    // ❤️ WISHLIST BUTTON (WITH DEBUG PRINT)
+                    Consumer<WishlistController>(
+                      builder: (context, wishlist, child) {
+
+                        print(
+                          "Wishlist count: ${wishlist.wishlist.length}",
+                        );
+
+                        final isFavorite =
+                            wishlist.isExist(product);
+
+                        return Positioned(
+                          top: 8,
+                          right: 8,
+
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.black45,
+                              shape: BoxShape.circle,
+                            ),
+
+                            child: IconButton(
+                              iconSize: 20,
+
+                              onPressed: () {
+                                wishlist.toggleWishlist(product);
+                              },
+
+                              icon: Icon(
+                                isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 12),
 
+              // TITLE
               Text(
                 title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
 
+              // PRICE
               Text(
                 price,
                 style: const TextStyle(
@@ -73,6 +133,7 @@ class ProductCard extends StatelessWidget {
 
               const SizedBox(height: 12),
 
+              // ADD TO CART BUTTON
               SizedBox(
                 width: double.infinity,
 

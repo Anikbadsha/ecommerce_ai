@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "294519627026",
+    "project_id": "ecomerce-ai-20fee",
+    "storage_bucket": "ecomerce-ai-20fee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:294519627026:android:7f55b9b87d369a75bd67cb",
+        "android_client_info": {
+          "package_name": "com.example.ecommerce_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyActJwGHkcnbqEMDFbLZwlWLL33yuFmDgA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

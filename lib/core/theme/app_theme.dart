@@ -5,16 +5,30 @@ class AppTheme {
     brightness: Brightness.dark,
     scaffoldBackgroundColor: const Color(0xFF0F172A),
 
-    colorScheme: const ColorScheme.dark(
-      primary: Color(0xFF6C63FF),
-      secondary: Color(0xFF22D3EE),
-    ),
-
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Color(0xFF0F172A),
       elevation: 0,
+      centerTitle: true,
     ),
 
-    useMaterial3: true,
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white10,
+
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+    ),
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.deepPurple,
+        minimumSize: const Size(double.infinity, 55),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+    ),
   );
 }

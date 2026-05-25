@@ -1,3 +1,4 @@
+import 'package:ecommerce_ai/features/wishlist/presentation/screens/wishlist_screen.dart';
 import 'package:flutter/material.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 
@@ -19,16 +20,11 @@ class _MainNavigationScreenState
 
   final List<Widget> screens = [
 
+    
+
     HomeScreen(),
 
-    const Scaffold(
-      body: Center(
-        child: Text(
-          'Wishlist Screen',
-          style: TextStyle(fontSize: 24),
-        ),
-      ),
-    ),
+    const WishlistScreen(),
 
     const CartScreen(),
 

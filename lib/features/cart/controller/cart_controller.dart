@@ -1,154 +1,150 @@
+import 'dart:async';
 import 'dart:convert';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../data/cart_item.dart';
 import '../../product/data/models/product_model.dart';
 
 class CartController extends ChangeNotifier {
-
   final List<CartItemModel> _items = [];
+  final _db = FirebaseFirestore.instance;
+  Timer? _debounce;
 
-  List<CartItemModel> get items => _items;
+  List<CartItemModel> get items => List.unmodifiable(_items);
 
   CartController() {
-    loadCart();
+    // Defer load until after first frame so notifyListeners is safe
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadLocal());
   }
 
-  // ADD TO CART
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  // ── Computed ──────────────────────────────────────────────
+  double get totalPrice => _items.fold(0, (sum, item) {
+        final raw = item.product.price.replaceAll(RegExp(r'[^\d.]'), '');
+        return sum + (double.tryParse(raw) ?? 0) * item.quantity;
+      });
+
+  int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
+
+  // ── Mutations ─────────────────────────────────────────────
   void addToCart(ProductModel product) {
-
-    final index = _items.indexWhere(
-      (item) => item.product.title == product.title,
-    );
-
-    if (index >= 0) {
-      _items[index].quantity++;
+    final idx = _items.indexWhere((i) => i.product.title == product.title);
+    if (idx >= 0) {
+      _items[idx].quantity++;
     } else {
-      _items.add(
-        CartItemModel(product: product),
-      );
+      _items.add(CartItemModel(product: product));
     }
-
-    saveCart();
-
+    _persist();
     notifyListeners();
   }
 
-  // REMOVE
   void removeFromCart(ProductModel product) {
-
-    _items.removeWhere(
-      (item) => item.product.title == product.title,
-    );
-
-    saveCart();
-
+    _items.removeWhere((i) => i.product.title == product.title);
+    _persist();
     notifyListeners();
   }
 
-  // INCREASE
   void increaseQty(CartItemModel item) {
-
     item.quantity++;
-
-    saveCart();
-
+    _persist();
     notifyListeners();
   }
 
-  // DECREASE
   void decreaseQty(CartItemModel item) {
-
     if (item.quantity > 1) {
       item.quantity--;
     } else {
       _items.remove(item);
     }
-
-    saveCart();
-
+    _persist();
     notifyListeners();
   }
 
-  // TOTAL
-  double get totalPrice {
-
-    double total = 0;
-
-    for (var item in _items) {
-
-      total += double.parse(
-        item.product.price.replaceAll('\$', ''),
-      ) * item.quantity;
-    }
-
-    return total;
-  }
-
-  // BADGE COUNT
-  int get itemCount {
-
-    int count = 0;
-
-    for (var item in _items) {
-      count += item.quantity;
-    }
-
-    return count;
-  }
-
-  // CLEAR
   void clearCart() {
-
     _items.clear();
-
-    saveCart();
-
+    _persist();
     notifyListeners();
   }
 
-  // SAVE
-  Future<void> saveCart() async {
+  // ── Persistence ───────────────────────────────────────────
+  // Debounced: batches rapid mutations into one write per 800ms
+  void _persist() {
+    _saveLocal();
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 800), _saveFirestore);
+  }
 
-    final prefs =
-        await SharedPreferences.getInstance();
-
-    final data = _items
-        .map(
-          (item) => jsonEncode(item.toJson()),
-        )
-        .toList();
-
+  Future<void> _saveLocal() async {
+    final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(
       'cart',
-      data,
+      _items.map((i) => jsonEncode(i.toJson())).toList(),
     );
   }
 
-  // LOAD
-  Future<void> loadCart() async {
-
-    final prefs =
-        await SharedPreferences.getInstance();
-
-    final data =
-        prefs.getStringList('cart');
-
-    if (data != null) {
-
+  Future<void> _loadLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList('cart');
+    if (data != null && data.isNotEmpty) {
       _items.clear();
-
-      _items.addAll(
-        data.map(
-          (item) => CartItemModel.fromJson(
-            jsonDecode(item),
-          ),
-        ),
-      );
-
+      _items.addAll(data.map((s) => CartItemModel.fromJson(jsonDecode(s))));
       notifyListeners();
     }
+    // After local load, sync from Firestore if logged in
+    if (_uid != null) await _loadFirestore();
+  }
+
+  Future<void> _saveFirestore() async {
+    if (_uid == null) return;
+    try {
+      await _db.collection('carts').doc(_uid).set({
+        'items': _items
+            .map((i) => {
+                  'title': i.product.title,
+                  'price': i.product.price,
+                  'description': i.product.description,
+                  'image': i.product.image,
+                  'category': i.product.category,
+                  'quantity': i.quantity,
+                })
+            .toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {} // non-critical — local cache is source of truth
+  }
+
+  Future<void> _loadFirestore() async {
+    if (_uid == null) return;
+    try {
+      final doc = await _db.collection('carts').doc(_uid).get();
+      if (!doc.exists) return;
+      final raw = doc.data()?['items'] as List?;
+      if (raw == null || raw.isEmpty) return;
+      _items.clear();
+      _items.addAll(raw.map((e) => CartItemModel(
+            product: ProductModel(
+              title: e['title'] ?? '',
+              price: e['price'] ?? '',
+              description: e['description'] ?? '',
+              image: e['image'] ?? '',
+              category: e['category'] ?? '',
+            ),
+            quantity: e['quantity'] ?? 1,
+          )));
+      notifyListeners();
+      await _saveLocal(); // keep local in sync
+    } catch (_) {}
+  }
+
+  // Called after login to sync cloud cart
+  Future<void> syncAfterLogin() => _loadFirestore();
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
   }
 }

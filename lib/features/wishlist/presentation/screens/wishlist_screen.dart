@@ -1,8 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecommerce_ai/core/theme/app_theme.dart';
+import 'package:ecommerce_ai/features/product/presentation/screens/product_details_screen.dart';
+import 'package:ecommerce_ai/features/wishlist/controller/wishlist_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../../product/presentation/screens/product_details_screen.dart';
-import '../../controller/wishlist_controller.dart';
 
 class WishlistScreen extends StatelessWidget {
   const WishlistScreen({super.key});
@@ -10,145 +11,203 @@ class WishlistScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<WishlistController>(
-      builder: (context, wishlist, child) {
-
+      builder: (context, wishlist, _) {
         final items = wishlist.wishlist;
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text("My Wishlist"),
-          ),
-
-          body: items.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No wishlist items yet ❤️',
-                    style: TextStyle(fontSize: 18),
+          backgroundColor: AppColors.bg,
+          body: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Row(
+                    children: [
+                      const Text('Wishlist',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          )),
+                      const SizedBox(width: 8),
+                      if (items.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${items.length}',
+                            style: const TextStyle(
+                                color: AppColors.error,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                    ],
                   ),
-                )
+                ),
 
-              : GridView.builder(
-                  padding: const EdgeInsets.all(16),
+                const SizedBox(height: 16),
 
-                  itemCount: items.length,
-
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 15,
-                    mainAxisSpacing: 15,
-                    childAspectRatio: 0.68,
-                  ),
-
-                  itemBuilder: (context, index) {
-
-                    final product = items[index];
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-
-                          children: [
-
-                            // IMAGE
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius:
-                                    BorderRadius.circular(18),
-
-                                child: Image.network(
-                                  product.image,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
+                items.isEmpty
+                    ? Expanded(child: _buildEmpty())
+                    : Expanded(
+                        child: GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: items.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.68,
+                          ),
+                          itemBuilder: (_, i) {
+                            final p = items[i];
+                            return GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        ProductDetailsScreen(product: p)),
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.card,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: AppColors.border),
                                 ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            Text(
-                              product.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-
-                            const SizedBox(height: 6),
-
-                            Text(
-                              product.price,
-                              style: const TextStyle(
-                                color: Color(0xFF22D3EE),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            Row(
-                              children: [
-
-                                Expanded(
-                                  child: ElevatedButton(
-                                    style:
-                                        ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          const Color(0xFF6C63FF),
-                                    ),
-
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              ProductDetailsScreen(
-                                            product: product,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      flex: 65,
+                                      child: Stack(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius:
+                                                const BorderRadius.vertical(
+                                                    top: Radius.circular(20)),
+                                            child: CachedNetworkImage(
+                                              imageUrl: p.image,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                              placeholder: (_, _) =>
+                                                  Container(
+                                                      color:
+                                                          AppColors.bgSecondary),
+                                            ),
                                           ),
+                                          Positioned(
+                                            top: 8,
+                                            right: 8,
+                                            child: GestureDetector(
+                                              onTap: () =>
+                                                  wishlist.toggleWishlist(p),
+                                              child: Container(
+                                                width: 30,
+                                                height: 30,
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.bg
+                                                      .withValues(alpha: 0.75),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                    Icons.favorite_rounded,
+                                                    size: 15,
+                                                    color: AppColors.error),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 35,
+                                      child: Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            10, 8, 10, 10),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              p.title,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: AppColors.textPrimary,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 12,
+                                                height: 1.3,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            ShaderMask(
+                                              shaderCallback: (b) =>
+                                                  AppColors.ctaGradient
+                                                      .createShader(b),
+                                              child: Text(
+                                                '\$${p.price}',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      );
-                                    },
-
-                                    child: Text("View",style: TextStyle(fontSize:MediaQuery.of(context).size.width * 0.035,),  
-
-                                  ),
-                                ),),
-
-                                const SizedBox(width: 8),
-
-                                IconButton(
-                                  onPressed: () {
-                                    wishlist.toggleWishlist(product);
-                                  },
-
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            );
+                          },
                         ),
                       ),
-                    );
-                  },
-                ),
+              ],
+            ),
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Icon(Icons.favorite_border_rounded,
+                size: 48, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 20),
+          const Text('No saved items',
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          const Text('Tap the heart icon to save products',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        ],
+      ),
     );
   }
 }

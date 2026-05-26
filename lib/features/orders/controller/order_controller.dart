@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ class OrderController extends ChangeNotifier {
   List<OrderModel> _orders = [];
   bool _loading = false;
   String? _error;
+  StreamSubscription<QuerySnapshot>? _sub;
 
   List<OrderModel> get orders => _orders;
   bool get loading => _loading;
@@ -18,13 +20,43 @@ class OrderController extends ChangeNotifier {
 
   String? get _uid => _auth.currentUser?.uid;
 
+  // Real-time listener — replaces one-time fetchOrders
+  void listenOrders() {
+    if (_uid == null) return;
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    _sub?.cancel();
+    _sub = _db
+        .collection('orders')
+        .where('uid', isEqualTo: _uid)
+        .snapshots()
+        .listen(
+      (snap) {
+        _orders = snap.docs
+            .map((d) => OrderModel.fromJson(d.data()))
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        _loading = false;
+        _error = null;
+        notifyListeners();
+      },
+      onError: (e) {
+        _error = e.toString();
+        _loading = false;
+        notifyListeners();
+      },
+    );
+  }
+
+  // Keep fetchOrders for manual pull-to-refresh
   Future<void> fetchOrders() async {
     if (_uid == null) return;
     _loading = true;
     _error = null;
     notifyListeners();
     try {
-      // No orderBy to avoid requiring a composite index
       final snap = await _db
           .collection('orders')
           .where('uid', isEqualTo: _uid)
@@ -32,7 +64,7 @@ class OrderController extends ChangeNotifier {
       _orders = snap.docs
           .map((d) => OrderModel.fromJson(d.data()))
           .toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt)); // sort client-side
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } catch (e) {
       _error = e.toString();
     }
@@ -66,11 +98,23 @@ class OrderController extends ChangeNotifier {
             .toList(),
       );
       await ref.set({...order.toJson(), 'uid': _uid});
-      _orders.insert(0, order);
-      notifyListeners();
+      // Stream will auto-update _orders via listener
       return null;
     } catch (e) {
       return e.toString();
     }
+  }
+
+  void stopListening() {
+    _sub?.cancel();
+    _sub = null;
+    _orders = [];
+    _loading = false;
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }

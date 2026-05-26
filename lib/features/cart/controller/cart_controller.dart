@@ -21,17 +21,24 @@ class CartController extends ChangeNotifier {
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
 
+  // Prefer id-based match; fall back to title for legacy cart data (no id)
+  bool _sameProduct(ProductModel a, ProductModel b) {
+    if (a.id.isNotEmpty && b.id.isNotEmpty) return a.id == b.id;
+    return a.title == b.title;
+  }
+
   // ── Computed ──────────────────────────────────────────────
-  double get totalPrice => _items.fold(0, (sum, item) {
+  double get totalPrice => _items.fold(0, (acc, item) {
         final raw = item.product.price.replaceAll(RegExp(r'[^\d.]'), '');
-        return sum + (double.tryParse(raw) ?? 0) * item.quantity;
+        return acc + (double.tryParse(raw) ?? 0) * item.quantity;
       });
 
-  int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
+  int get itemCount => _items.fold(0, (acc, item) => acc + item.quantity);
 
   // ── Mutations ─────────────────────────────────────────────
   void addToCart(ProductModel product) {
-    final idx = _items.indexWhere((i) => i.product.title == product.title);
+    // Use id if available, fall back to title for legacy data
+    final idx = _items.indexWhere((i) => _sameProduct(i.product, product));
     if (idx >= 0) {
       _items[idx].quantity++;
     } else {
@@ -42,7 +49,7 @@ class CartController extends ChangeNotifier {
   }
 
   void removeFromCart(ProductModel product) {
-    _items.removeWhere((i) => i.product.title == product.title);
+    _items.removeWhere((i) => _sameProduct(i.product, product));
     _persist();
     notifyListeners();
   }
@@ -103,6 +110,7 @@ class CartController extends ChangeNotifier {
       await _db.collection('carts').doc(_uid).set({
         'items': _items
             .map((i) => {
+                  'id': i.product.id,
                   'title': i.product.title,
                   'price': i.product.price,
                   'description': i.product.description,
@@ -126,6 +134,7 @@ class CartController extends ChangeNotifier {
       _items.clear();
       _items.addAll(raw.map((e) => CartItemModel(
             product: ProductModel(
+              id: e['id'] ?? '',
               title: e['title'] ?? '',
               price: e['price'] ?? '',
               description: e['description'] ?? '',

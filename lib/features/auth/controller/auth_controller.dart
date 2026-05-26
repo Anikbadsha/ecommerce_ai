@@ -15,7 +15,8 @@ class AuthController extends ChangeNotifier {
   bool get isLoggedIn => _user != null;
 
   AuthController() {
-    // Listen to Firebase auth state — fires reliably after Google sign-in completes
+    // Seed synchronously so AuthGate doesn't flash LoginScreen on cold start
+    _user = _auth.currentUser;
     _auth.authStateChanges().listen((u) {
       _user = u;
       notifyListeners();
@@ -79,6 +80,17 @@ class AuthController extends ChangeNotifier {
       return null;
     } on FirebaseAuthException catch (e) {
       return e.message ?? 'Auth error: ${e.code}';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message;
     } catch (e) {
       return e.toString();
     }

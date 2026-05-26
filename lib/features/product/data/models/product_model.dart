@@ -1,4 +1,5 @@
 class ProductModel {
+  final String id; // Firestore document ID
   final String title;
   final String price;
   final String description;
@@ -9,6 +10,7 @@ class ProductModel {
   final int discount; // percentage, 0 = no discount
 
   ProductModel({
+    this.id = '',
     required this.title,
     required this.price,
     required this.description,
@@ -21,6 +23,7 @@ class ProductModel {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
+      id: json['id'] ?? '',
       title: json['title'] ?? '',
       price: json['price'] ?? '',
       description: json['description'] ?? '',
@@ -33,6 +36,7 @@ class ProductModel {
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'title': title,
         'price': price,
         'description': description,

@@ -17,6 +17,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   int _payIdx = 0;
   bool _placing = false;
   final _couponCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
 
   static const _methods = [
     (Icons.credit_card_rounded, 'Credit Card'),
@@ -27,10 +28,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void dispose() {
     _couponCtrl.dispose();
+    _addressCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _placeOrder() async {
+    final address = _addressCtrl.text.trim();
+    if (address.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please enter a delivery address'),
+        backgroundColor: AppColors.error,
+      ));
+      return;
+    }
     setState(() => _placing = true);
     final cart = context.read<CartController>();
     final coupon = context.read<CouponController>();
@@ -40,7 +50,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final error = await orders.placeOrder(
       items: cart.items,
       total: finalTotal,
-      address: '123 Main Street, City',
+      address: address,
       paymentMethod: _methods[_payIdx].$2,
     );
 
@@ -93,7 +103,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             _label('Delivery Address'),
             const SizedBox(height: 10),
-            _AddressCard(),
+            TextFormField(
+              controller: _addressCtrl,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: 'Enter your delivery address',
+                prefixIcon: Icon(Icons.location_on_outlined),
+              ),
+            ),
             const SizedBox(height: 24),
 
             _label('Order Summary'),
@@ -302,45 +320,4 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ],
         ),
       );
-}
-
-class _AddressCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.blue, width: 1.5),
-      ),
-      child: Row(children: [
-        Container(
-          width: 36, height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.blue.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(Icons.location_on_rounded,
-              color: AppColors.blue, size: 18),
-        ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Home',
-                style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13)),
-            SizedBox(height: 2),
-            Text('123 Main Street, City, Country',
-                style: TextStyle(
-                    color: AppColors.textSecondary, fontSize: 12)),
-          ]),
-        ),
-        const Icon(Icons.chevron_right_rounded,
-            color: AppColors.textSecondary, size: 18),
-      ]),
-    );
-  }
 }

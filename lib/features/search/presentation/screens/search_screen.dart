@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_ai/core/theme/app_theme.dart';
+import 'package:ecommerce_ai/core/utils/app_cache_manager.dart';
 import 'package:ecommerce_ai/features/product/data/models/product_model.dart';
 import 'package:ecommerce_ai/features/product/data/services/product_service.dart';
 import 'package:ecommerce_ai/features/product/presentation/screens/product_details_screen.dart';
@@ -131,6 +132,7 @@ class _ResultTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: CachedNetworkImage(
                 imageUrl: product.image,
+                cacheManager: AppCacheManager.instance,
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,

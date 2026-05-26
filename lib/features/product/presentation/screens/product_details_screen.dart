@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_ai/core/theme/app_theme.dart';
+import 'package:ecommerce_ai/core/utils/app_cache_manager.dart';
 import 'package:ecommerce_ai/core/widgets/gradient_button.dart';
 import 'package:ecommerce_ai/features/cart/controller/cart_controller.dart';
 import 'package:ecommerce_ai/features/product/data/models/product_model.dart';
@@ -59,6 +60,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     p.image.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: p.image,
+                            cacheManager: AppCacheManager.instance,
                             width: double.infinity,
                             fit: BoxFit.contain,
                             placeholder: (_, _) => const Center(

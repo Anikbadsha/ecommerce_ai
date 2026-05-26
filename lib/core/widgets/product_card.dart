@@ -4,6 +4,7 @@ import 'package:ecommerce_ai/features/wishlist/controller/wishlist_controller.da
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_cache_manager.dart';
 
 class ProductCard extends StatefulWidget {
   final ProductModel product;
@@ -95,11 +96,12 @@ class _ProductCardState extends State<ProductCard>
                     child: CachedNetworkImage(
                       imageUrl: widget.image,
                       cacheKey: widget.image, // prevents re-fetch on rebuild
+                      cacheManager: AppCacheManager.instance,
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.cover,
                       fadeInDuration: const Duration(milliseconds: 200),
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: AppColors.bgSecondary,
                         child: const Center(
                           child: SizedBox(
@@ -109,7 +111,7 @@ class _ProductCardState extends State<ProductCard>
                           ),
                         ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: AppColors.bgSecondary,
                         child: const Icon(Icons.image_not_supported,
                             color: AppColors.textSecondary),

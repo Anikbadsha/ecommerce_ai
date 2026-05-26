@@ -1,6 +1,10 @@
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ecommerce_ai/core/theme/app_theme.dart';
+import 'package:ecommerce_ai/features/cart/controller/cart_controller.dart';
 import 'package:ecommerce_ai/features/orders/controller/order_controller.dart';
 import 'package:ecommerce_ai/features/orders/data/order_model.dart';
+import 'package:ecommerce_ai/features/product/data/models/product_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -37,7 +41,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 fontSize: 18)),
       ),
       body: Consumer<OrderController>(
-        builder: (_, ctrl, _) {
+        builder: (_, ctrl, child) {
           if (ctrl.loading) {
             return const Center(
                 child: CircularProgressIndicator(color: AppColors.blue));
@@ -70,16 +74,130 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
             );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-            physics: const BouncingScrollPhysics(),
-            itemCount: ctrl.orders.length,
-            itemBuilder: (_, i) => _OrderCard(order: ctrl.orders[i]),
+          return RefreshIndicator(
+            color: AppColors.blue,
+            backgroundColor: AppColors.card,
+            onRefresh: () => context.read<OrderController>().fetchOrders(),
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: ctrl.orders.length,
+              itemBuilder: (_, i) => _OrderCard(order: ctrl.orders[i]),
+            ),
           );
         },
       ),
     );
   }
+}
+
+void _showTracking(BuildContext context, OrderModel order) {
+  const steps = ['processing', 'confirmed', 'in_transit', 'delivered'];
+  const stepLabels = ['Order Placed', 'Confirmed', 'In Transit', 'Delivered'];
+  const stepIcons = [
+    Icons.receipt_long_rounded,
+    Icons.check_circle_outline_rounded,
+    Icons.local_shipping_rounded,
+    Icons.home_rounded,
+  ];
+
+  // Normalize any Firestore value to snake_case for lookup:
+  // "In Transit" → "in_transit", "Delivered" → "delivered", etc.
+  String _normalize(String s) =>
+      s.trim().toLowerCase().replaceAll(' ', '_');
+
+  // Live stream of just the status field for this order
+  final statusStream = FirebaseFirestore.instance
+      .collection('orders')
+      .doc(order.id)
+      .snapshots()
+      .map((snap) => snap.data()?['status'] as String? ?? order.status);
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.bgSecondary,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => StreamBuilder<String>(
+      stream: statusStream,
+      initialData: order.status,
+      builder: (_, snap) {
+        final currentIdx =
+            steps.indexOf(_normalize(snap.data ?? order.status))
+                .clamp(0, steps.length - 1);
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Order Tracking',
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text('Order #${order.id.length > 12 ? order.id.substring(0, 12) : order.id}',
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12)),
+              const SizedBox(height: 24),
+              ...List.generate(steps.length, (i) {
+                final done = i <= currentIdx;
+                final active = i == currentIdx;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          gradient: done ? AppColors.ctaGradient : null,
+                          color: done ? null : AppColors.card,
+                          shape: BoxShape.circle,
+                          border: done
+                              ? null
+                              : Border.all(color: AppColors.border),
+                        ),
+                        child: Icon(stepIcons[i],
+                            size: 16,
+                            color: done
+                                ? Colors.white
+                                : AppColors.textSecondary),
+                      ),
+                      if (i < steps.length - 1)
+                        Container(
+                          width: 2, height: 32,
+                          color: i < currentIdx
+                              ? AppColors.blue
+                              : AppColors.border,
+                        ),
+                    ]),
+                    const SizedBox(width: 14),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(stepLabels[i],
+                          style: TextStyle(
+                            color: active
+                                ? AppColors.textPrimary
+                                : done
+                                    ? AppColors.textSecondary
+                                    : AppColors.border,
+                            fontWeight: active
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            fontSize: 14,
+                          )),
+                    ),
+                  ],
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    ),
+  );
 }
 
 class _OrderCard extends StatelessWidget {
@@ -167,7 +285,7 @@ class _OrderCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: () {},
+              onPressed: () => _showTracking(context, order),
               child: const Text('Track',
                   style: TextStyle(
                       color: AppColors.textPrimary, fontSize: 12)),
@@ -182,7 +300,24 @@ class _OrderCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: () {},
+              onPressed: () {
+                final cart = context.read<CartController>();
+                for (final item in order.items) {
+                  cart.addToCart(ProductModel(
+                    title: item.title,
+                    price: item.price,
+                    image: item.image,
+                    description: '',
+                    category: '',
+                  ));
+                }
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(
+                      '${order.items.length} item${order.items.length > 1 ? 's' : ''} added to cart'),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                ));
+              },
               child: const Text('Reorder',
                   style: TextStyle(color: AppColors.blue, fontSize: 12)),
             ),

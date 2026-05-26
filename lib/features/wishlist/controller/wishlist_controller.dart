@@ -12,27 +12,27 @@ class WishlistController extends ChangeNotifier {
   List<ProductModel> get wishlist => _wishlist;
 
   WishlistController() {
-    loadWishlist();
+    // Defer to avoid notifyListeners during widget tree construction
+    WidgetsBinding.instance.addPostFrameCallback((_) => loadWishlist());
+  }
+
+  // Prefer id-based match; fall back to title for legacy wishlist data
+  bool _sameProduct(ProductModel a, ProductModel b) {
+    if (a.id.isNotEmpty && b.id.isNotEmpty) return a.id == b.id;
+    return a.title == b.title;
   }
 
   bool isExist(ProductModel product) {
-    return _wishlist.any(
-      (item) => item.title == product.title,
-    );
+    return _wishlist.any((item) => _sameProduct(item, product));
   }
 
   void toggleWishlist(ProductModel product) {
-
     if (isExist(product)) {
-      _wishlist.removeWhere(
-        (item) => item.title == product.title,
-      );
+      _wishlist.removeWhere((item) => _sameProduct(item, product));
     } else {
       _wishlist.add(product);
     }
-
     saveWishlist();
-
     notifyListeners();
   }
 

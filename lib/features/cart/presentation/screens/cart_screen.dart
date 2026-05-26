@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_ai/core/theme/app_theme.dart';
+import 'package:ecommerce_ai/core/utils/app_cache_manager.dart';
 import 'package:ecommerce_ai/core/widgets/gradient_button.dart';
 import 'package:ecommerce_ai/features/checkout/presentation/screens/checkout_screen.dart';
 import 'package:flutter/material.dart';
@@ -108,8 +109,10 @@ class CartScreen extends StatelessWidget {
   }
 
   Widget _buildCheckoutPanel(BuildContext context, CartController cart) {
+    // Add padding for the floating nav bar (64px height + 20px bottom margin)
+    final bottomPad = MediaQuery.of(context).padding.bottom + 42;
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, bottomPad),
       decoration: const BoxDecoration(
         color: AppColors.bgSecondary,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -135,7 +138,7 @@ class CartScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const CheckoutScreen())),
             icon: const Icon(Icons.lock_rounded, color: Colors.white, size: 16),
           ),
-        ],
+        ], 
       ),
     );
   }
@@ -165,6 +168,7 @@ class _CartItem extends StatelessWidget {
             child: item.product.image.isNotEmpty
                 ? CachedNetworkImage(
                     imageUrl: item.product.image,
+                    cacheManager: AppCacheManager.instance,
                     width: 72,
                     height: 72,
                     fit: BoxFit.cover,

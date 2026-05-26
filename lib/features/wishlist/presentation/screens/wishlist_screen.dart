@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_ai/core/theme/app_theme.dart';
+import 'package:ecommerce_ai/core/utils/app_cache_manager.dart';
 import 'package:ecommerce_ai/features/product/presentation/screens/product_details_screen.dart';
 import 'package:ecommerce_ai/features/wishlist/controller/wishlist_controller.dart';
 import 'package:flutter/material.dart';
@@ -96,6 +97,7 @@ class WishlistScreen extends StatelessWidget {
                                                     top: Radius.circular(20)),
                                             child: CachedNetworkImage(
                                               imageUrl: p.image,
+                                              cacheManager: AppCacheManager.instance,
                                               width: double.infinity,
                                               fit: BoxFit.cover,
                                               placeholder: (_, _) =>

@@ -43,15 +43,16 @@ class _AuthGateState extends State<AuthGate> {
     final auth = context.watch<AuthController>();
     if (!auth.isLoggedIn) {
       _synced = false;
+      // Stop order stream on logout
+      context.read<OrderController>().stopListening();
       return const LoginScreen();
     }
 
-    // Sync data once per login session
     if (!_synced) {
       _synced = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<CartController>().syncAfterLogin();
-        context.read<OrderController>().fetchOrders();
+        context.read<OrderController>().listenOrders(); // real-time
       });
     }
 

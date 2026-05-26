@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ecommerce_ai/core/theme/app_theme.dart';
+import 'package:ecommerce_ai/core/utils/app_cache_manager.dart';
 import 'package:ecommerce_ai/core/widgets/product_card.dart';
 import 'package:ecommerce_ai/features/cart/controller/cart_controller.dart';
 import 'package:ecommerce_ai/features/product/data/models/product_model.dart';
@@ -29,10 +31,16 @@ class _HomeScreenState extends State<HomeScreen>
   // Cached product list — only updated when Firestore emits
   List<ProductModel> _allProducts = [];
 
+  // Pagination state — extra pages loaded on demand
+  final List<ProductModel> _extraProducts = [];
+  DocumentSnapshot? _lastDoc;
+  bool _hasMore = true;
+  bool _loadingMore = false;
+
   static const _banners = [
-    'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
-    'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800',
-    'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800',
+    'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80&fit=crop',
+    'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&q=80&fit=crop',
+    'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80&fit=crop',
   ];
 
   static const _categories = [
@@ -59,13 +67,36 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<ProductModel> get _filtered {
+    // Merge stream page + any extra pages loaded on demand
+    final combined = [..._allProducts, ..._extraProducts];
+    // Deduplicate by id in case stream and paginated fetch overlap
+    final seen = <String>{};
+    final deduped = combined.where((p) => seen.add(p.id)).toList();
+
     final cat = _categories[_selectedCategory].$1;
-    return _allProducts.where((p) {
+    return deduped.where((p) {
       final matchQuery = p.title.toLowerCase().contains(_query);
       final matchCat = cat == 'All' ||
           p.category.toLowerCase().contains(cat.toLowerCase());
       return matchQuery && matchCat;
     }).toList();
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final page = await ProductService().getProductsPage(lastDoc: _lastDoc);
+      setState(() {
+        _extraProducts.addAll(page.products);
+        _lastDoc = page.lastDoc;
+        _hasMore = page.hasMore;
+      });
+    } catch (_) {
+      // Non-critical — user can retry by tapping again
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
   }
 
   @override
@@ -78,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen>
         child: Column(
           children: [
             _topBar(context),
+            const SizedBox(height: 8),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -92,6 +124,8 @@ class _HomeScreenState extends State<HomeScreen>
                     _sectionHeader(),
                     const SizedBox(height: 16),
                     _productGrid(),
+                    if (_hasMore && _query.isEmpty && _selectedCategory == 0)
+                      _loadMoreButton(),
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -123,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen>
               // Cart badge — Selector so only badge rebuilds on cart change
               Selector<CartController, int>(
                 selector: (_, c) => c.itemCount,
-                builder: (_, count, __) => Stack(
+                builder: (_, itemCount, _) => Stack(
                   children: [
                     Container(
                       width: 40, height: 40,
@@ -135,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen>
                       child: const Icon(Icons.shopping_bag_outlined,
                           size: 20, color: AppColors.textPrimary),
                     ),
-                    if (count > 0)
+                    if (itemCount > 0)
                       Positioned(
                         right: 0, top: 0,
                         child: Container(
@@ -144,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen>
                               gradient: AppColors.ctaGradient,
                               shape: BoxShape.circle),
                           child: Center(
-                            child: Text('$count',
+                            child: Text('$itemCount',
                                 style: const TextStyle(
                                     fontSize: 9,
                                     color: Colors.white,
@@ -187,6 +221,7 @@ class _HomeScreenState extends State<HomeScreen>
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
+          
         ],
       ),
     );
@@ -215,9 +250,10 @@ class _HomeScreenState extends State<HomeScreen>
                   CachedNetworkImage(
                     imageUrl: url,
                     cacheKey: url,
+                    cacheManager: AppCacheManager.instance,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: AppColors.card),
-                    errorWidget: (_, __, ___) =>
+                    placeholder: (_, _) => Container(color: AppColors.card),
+                    errorWidget: (_, _, _) =>
                         Container(color: AppColors.card),
                   ),
                   Container(
@@ -434,6 +470,32 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _loadMoreButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: SizedBox(
+        width: double.infinity,
+        height: 44,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.border),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+          ),
+          onPressed: _loadingMore ? null : _loadMore,
+          child: _loadingMore
+              ? const SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppColors.blue))
+              : const Text('Load more',
+                  style: TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13)),
+        ),
+      ),
+    );
+  }
+
   Widget _shimmerGrid() {
     return GridView.builder(
       shrinkWrap: true,
@@ -446,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen>
         mainAxisSpacing: 12,
         childAspectRatio: 0.68,
       ),
-      itemBuilder: (_, __) => Container(
+      itemBuilder: (_, _) => Container(
         decoration: BoxDecoration(
             color: AppColors.card,
             borderRadius: BorderRadius.circular(20)),
@@ -486,7 +548,7 @@ class _ShimmerBoxState extends State<_ShimmerBox>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         decoration: BoxDecoration(
           color: AppColors.card.withValues(alpha: _anim.value + 0.3),
           borderRadius: BorderRadius.circular(20),

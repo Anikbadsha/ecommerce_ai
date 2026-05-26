@@ -1,4 +1,4 @@
-package com.example.ecommerce_ai
+package com.neoshop.app
 
 import io.flutter.embedding.android.FlutterActivity
 

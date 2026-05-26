@@ -41,6 +41,35 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:294519627026:android:c19c9ae15e55cecfbd67cb",
+        "android_client_info": {
+          "package_name": "com.neoshop.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "294519627026-6l29549dladr1c96ro8bnubhqg0gd8li.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyActJwGHkcnbqEMDFbLZwlWLL33yuFmDgA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "294519627026-6l29549dladr1c96ro8bnubhqg0gd8li.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

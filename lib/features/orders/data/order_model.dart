@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class OrderModel {
   final String id;
   final String status; // processing | in_transit | delivered | cancelled
@@ -21,15 +23,21 @@ class OrderModel {
         id: j['id'] ?? '',
         status: j['status'] ?? 'processing',
         total: (j['total'] ?? 0).toDouble(),
-        createdAt: j['createdAt'] != null
-            ? DateTime.parse(j['createdAt'])
-            : DateTime.now(),
+        // Handle both Firestore Timestamp and ISO string (BUG-001 fix)
+        createdAt: _parseDate(j['createdAt']),
         items: (j['items'] as List? ?? [])
             .map((e) => OrderItem.fromJson(e))
             .toList(),
         address: j['address'] ?? '',
         paymentMethod: j['paymentMethod'] ?? '',
       );
+
+  static DateTime _parseDate(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
